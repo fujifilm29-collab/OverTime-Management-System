@@ -180,9 +180,9 @@ body{ margin:0; font-family:'Sarabun', sans-serif; color:var(--ink); background:
     <div class="card">
       <div class="grid2">
         <div><label>ชื่อ-นามสกุล ผู้ปฏิบัติงาน <span style="color:var(--danger);">*</span></label><input type="text" id="empName" value=""></div>
-        <div><label>ส่วนราชการ <span style="color:var(--danger);">*</span></label><input type="text" id="empPos" value=""></div>
-        <div><label>ชื่อผู้รับรองความจริง <span style="color:var(--danger);">*</span></label><input type="text" id="certName" value=""></div>
-        <div><label>ตำแหน่งผู้รับรอง <span style="color:var(--danger);">*</span></label><input type="text" id="certPos" value=""></div>
+        <div><label>ส่วนราชการ <span style="color:var(--danger);">*</span></label><input type="text" id="empPos" value="ส่วนบัญชี สำนักบริหารการคลัง"></div>
+        <div><label>ชื่อผู้รับรองความจริง <span style="color:var(--danger);">*</span></label><input type="text" id="certName" value="นางพัทยา กันทะวงค์"></div>
+        <div><label>ตำแหน่งผู้รับรอง <span style="color:var(--danger);">*</span></label><input type="text" id="certPos" value="นักวิชาการเงินและบัญชีชำนาญการ"></div>
         <div>
           <label>เดือน/ปีที่เบิกจ่าย</label>
           <input type="text" id="claimMonthDisplay" disabled>
@@ -334,9 +334,9 @@ function loadFromLocalStorage() {
     try {
       const parsedData = JSON.parse(savedData);
       if (parsedData.empName !== undefined) document.getElementById('empName').value = parsedData.empName;
-      if (parsedData.empPos !== undefined) document.getElementById('empPos').value = parsedData.empPos;
-      if (parsedData.certName !== undefined) document.getElementById('certName').value = parsedData.certName;
-      if (parsedData.certPos !== undefined) document.getElementById('certPos').value = parsedData.certPos;
+      if (parsedData.empPos) document.getElementById('empPos').value = parsedData.empPos;
+      if (parsedData.certName) document.getElementById('certName').value = parsedData.certName;
+      if (parsedData.certPos) document.getElementById('certPos').value = parsedData.certPos;
       if (parsedData.claimMonth !== undefined) document.getElementById('claimMonth').value = parsedData.claimMonth;
       if (parsedData.entries !== undefined) state.entries = parsedData.entries;
     } catch (e) {}
