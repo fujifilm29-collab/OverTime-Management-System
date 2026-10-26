@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>ระบบคำนวณค่าล่วงเวลา</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@200;300;400;500;600;700&family=IBM+Plex+Mono:wght@200;500;600&display=swap" rel="stylesheet">
+<style>
+/* ปรับแก้ Font Family ของทั้ง Body และตารางให้ใช้ Sarabun จาก Google Fonts */
+body, table {
+    font-family: 'Sarabun', sans-serif !important;
+}
+
+  :root{
+    --navy-950:#0a1a2f; --navy-800:#122c4a; --navy-700:#1a3a5f;
+    --ink:#1f2937; --ink-soft:#5b6472; --paper:#faf9f5;
+    --paper-line:#dcdfe4; --bronze:#a97c3f; --bronze-soft:#f1e6d2; --danger:#b23b3b;
+  }
+  
+  html { zoom: 100%; }
+  *{box-sizing:border-box;}
+body{ margin:0; font-family:'Sarabun', sans-serif; color:var(--ink); background:var(--paper); }
+  .mono{font-family:'IBM Plex Mono', 'Courier New', monospace;}
+
+  /* --- ระบบสลับหน้าจอ (Single Page System) --- */
+  .page-view { display: none; }
+  .page-view.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ---------- HERO & MAIN ---------- */
+  .hero{
+    background: radial-gradient(ellipse at 80% 0%, rgba(169,124,63,0.18), transparent 55%), linear-gradient(155deg, var(--navy-950) 0%, var(--navy-800) 55%, var(--navy-700) 100%);
+    color:#eef2f7; padding:24px 32px 20px;
+  }
+  .hero-inner{max-width:1200px;margin:0 auto;}
+  .eyebrow{ font-size:14px;letter-spacing:.1em; color:#9fb3cc;margin-bottom:10px;font-weight:600; }
+  .hero h1{ font-size:clamp(26px,4vw,38px);font-weight:700;line-height:1.2;margin:0 0 4px; }
+  .hero-subtitle-en { font-size: 15px; color: #9fb3cc; margin-bottom: 16px; font-weight: 300; letter-spacing: 0.04em; opacity: 0.85; }
+  .hero-meta{font-size:12px;color:#8ea3bd;line-height:1.9;text-align: right;margin-bottom:0;}
+  
+  .section{max-width:1200px;margin:0 auto;padding:24px 32px 56px;}
+  .section-head{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;}
+  .section-head h3{font-size:22px;font-weight:700;margin:0;}
+  .section-sub{color:var(--ink-soft);font-size:13.5px;margin:0 0 28px;padding-left:0px;}
+
+  .card{ background:#fff;border:1px solid var(--paper-line);border-radius:12px; padding:26px 28px;margin-bottom:20px; }
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px;}
+  label{display:block;font-size:12.5px;color:var(--ink-soft);font-weight:600;margin-bottom:5px;}
+  input[type=text],input[type=date],input[type=month],select{
+    width:100%;border:1px solid var(--paper-line);border-radius:7px; padding:9px 11px;font-family:'Sarabun',sans-serif;font-size:14.5px;color:var(--ink); background:#fff;transition:border-color .15s;
+  }
+  input:focus,select:focus{outline:none;border-color:var(--bronze);box-shadow:0 0 0 3px var(--bronze-soft);}
+  input:disabled{ background-color: #eef2f6 !important; color: #6b7280 !important; cursor: not-allowed; }
+
+  .entry-row-1{display:grid;grid-template-columns:1.1fr 1fr 1fr .8fr;gap:16px;align-items:end;margin-top:18px;}
+  .entry-row-2{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:end;margin-top:14px;}
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  
+  .btn{ border:1px solid var(--paper-line);background:#fff;color:var(--ink); padding:9px 15px;border-radius:7px;font-family:'Sarabun',sans-serif;font-size:13.5px; font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s; }
+  .btn:hover{border-color:var(--bronze);color:var(--bronze);}
+  .btn-primary{background:var(--navy-800);border-color:var(--navy-800);color:#fff;}
+  .btn-primary:hover{background:var(--navy-700);color:#fff;}
+  .btn-ghost{color:var(--ink-soft);}
+  .btn-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+
+  /* --- การปรับแต่งตารางหน้าหลัก --- */
+  table.log{ width:100%; border-collapse:collapse; margin-top:18px; font-family:'Sarabun', sans-serif !important; }
+  table.log th{ text-align:left; font-size:14px; color:var(--ink-soft); border-bottom:1px solid var(--paper-line); padding:8px 6px; font-weight:300; }
+  table.log td{ padding:8px 6px; border-bottom:1px solid #f0f1f3; font-size:14px; }
+  table.log .mono { font-family:'Sarabun', sans-serif !important; font-size:15px !important; font-weight:500; }
+  table.log tr:last-child td{border-bottom:none;}
+  .del-x{background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;font-weight:600;}
+  .edit-x { background:none; border:none; color:var(--navy-700); cursor:pointer; font-size:14px; font-weight:600; margin-right: 8px; }
+  .edit-x:hover { text-decoration: underline; }
+  .empty-row td{color:var(--ink-soft);text-align:center;padding:22px;font-size:15px;}
+  
+  table.log th:nth-child(2), table.log td:nth-child(2),
+  table.log th:nth-child(3), table.log td:nth-child(3),
+  table.log th:nth-child(4), table.log td:nth-child(4),
+  table.log th:nth-child(5), table.log td:nth-child(5) {
+    text-align: center;
+  }
+  
+  footer{text-align:center;padding:36px;font-size:12px;color:var(--ink-soft);}
+
+  /* ---------- REPORT VIEWS (PAGE 1 & 2) ---------- */
+  .topbar { background: var(--navy-800); padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; color: white; }
+  .btn-back { background: white; color: var(--navy-800); }
+  .btn-print { background: var(--bronze); color: white; }
+  .report-container { max-width: 900px; margin: 30px auto; padding: 0 20px; }
+  .report-container.wide { max-width: 1200px; }
+
+  .doc{ background:#ffffff; border:1px solid var(--paper-line); box-shadow: 0 4px 10px rgba(0,0,0,0.05); padding:30px 34px; font-size:13px; color:#000000; }
+
+  /* ปรับความหนาและขนาดฟอนต์หัวกระดาษ (หน้า 1 และ 2) */
+  .doc-title { text-align:center; font-weight:300 !important; font-size:12px !important; margin-bottom:10px !important; font-family:'Sarabun', sans-serif !important; line-height: 1.1 !important; }
+  .doc-sub, .doc-meta { text-align:center; font-weight:300 !important; font-size:12px !important; margin-bottom:8px !important; font-family:'Sarabun', sans-serif !important; line-height: 1.1 !important; }
+
+  /* ปรับขนาดฟอนต์ในตาราง (หน้า 1 และ 2) */
+.doc table{ width:100%; border-collapse:collapse; margin:12px 0; border: 0.2px solid #000000 !important; }
+  .doc table th, .doc table td { border: 0.1mm solid #000000 !important; padding: 2px 4px !important; text-align:center; font-family:'Sarabun', sans-serif !important; font-size: 12px !important; font-weight: 200 !important; }
+    .doc table th{ background:#f5f5f5; font-weight: 300 !important; }
+  .doc td.task{ text-align:left; padding:2px 6px !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:480px; } 
+  .doc td.dayname{ font-weight:200 !important; }
+  .doc tr.weekend-row td{ background:#f1e7fa !important; }
+  .doc tr.weekend-row td.dayname{ background:#e4cdf3 !important; }
+  
+  /* ปรับฟอนต์ส่วนเซ็นชื่อ */
+  .doc-certify{ text-align:center; font-family:'Sarabun', sans-serif !important; font-size: 14px !important; margin-top:10px; width:100%; line-height: 1.1; font-weight: 300 !important; }
+  .doc-note{ font-size: 11px !important; line-height:1.4; margin-top:10px; border-top:none; padding-top:8px; font-weight: 200 !important; }
+  .note-title{ text-decoration:underline; font-weight:200 !important; margin-bottom:4px; }
+
+  .totals-strip{ display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px; }
+  .totals-strip .box{ background:#fff;border:1px solid var(--paper-line);border-radius:8px;padding:14px 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);}
+  .totals-strip .box .num{ font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--navy-800); }
+  .totals-strip .box .lbl{ font-size:11.5px;color:var(--ink-soft);margin-top:4px; }
+
+  @media(max-width:720px){
+    .grid2 {grid-template-columns:1fr;}
+    .entry-row-1{grid-template-columns:1fr 1fr;}
+    .entry-row-2{grid-template-columns:1fr;}
+    .totals-strip {grid-template-columns:1fr 1fr;}
+  }
+
+  .doc table td.mono { font-size: 12px !important; }
+  #sheet1Doc td.mono { font-size: 12px !important; }
+    #sheet1Doc .doc-sub,
+  #sheet1Doc .doc-meta,
+  #sheet1Doc .doc-certify,
+  #sheet1Doc .doc-note,
+  #sheet1Doc .note-title {
+      font-size: 12px !important;
+  }
+
+/* เพิ่มความสูง (พื้นที่ว่างบน-ล่าง) ภายในตารางเฉพาะหน้า 1 */
+  #sheet1Doc table th, 
+  #sheet1Doc table td {
+      padding: 3px 4px !important; 
+  }
+
+  /* ---------- PRINT SETUP ---------- */
+  @media print{
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    html, body { margin: 0 !important; padding: 0 !important; height: auto !important; background: #ffffff; zoom: 100% !important; overflow: visible !important; }
+    .hero, .topbar, .totals-strip, footer { display: none !important; }
+    
+    .page-view { display: none !important; }
+    .page-view.active { display: block !important; }
+    
+    .report-container, .report-container.wide { margin: 0; box-shadow: none; border: none; max-width: 100%; padding: 0; }
+    .doc { padding: 0; border: none; box-shadow: none; }
+    
+    td.time-cell { font-size: 12px !important; line-height: 1.1 !important; padding: 2px 0 !important; }
+    td.mono { font-size: 12px !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="view-main" class="page-view active">
+  <div class="hero">
+    <div class="hero-inner">
+      <h1>OverTime Management System</h1>
+      <div class="hero-subtitle-en">ระบบจัดการค่าล่วงเวลา</div>
+      <div class="hero-meta" style="margin-top: 12px; line-height: 1.6; text-align: right;">
+        พัฒนาโดย ส่วนบัญชี สำนักบริหารการคลัง<br>
+        กระทรวงการต่างประเทศ
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><h3>บันทึกข้อมูลการปฏิบัติงานล่วงเวลารายวัน</h3></div>
+    <p class="section-sub">ระบบจะประมวลผลเพื่อจัดทำรายงานการปฏิบัติงานและหลักฐานการเบิกจ่าย</p>
+
+    <div class="card">
+      <div class="grid2">
+        <div><label>ชื่อ-นามสกุล ผู้ปฏิบัติงาน <span style="color:var(--danger);">*</span></label><input type="text" id="empName" value=""></div>
+        <div><label>ส่วนราชการ <span style="color:var(--danger);">*</span></label><input type="text" id="empPos" value=""></div>
+        <div><label>ชื่อผู้รับรองความจริง <span style="color:var(--danger);">*</span></label><input type="text" id="certName" value=""></div>
+        <div><label>ตำแหน่งผู้รับรอง <span style="color:var(--danger);">*</span></label><input type="text" id="certPos" value=""></div>
+        <div>
+          <label>เดือน/ปีที่เบิกจ่าย</label>
+          <input type="text" id="claimMonthDisplay" disabled>
+          <input type="hidden" id="claimMonth">
+        </div>
+      </div>
+
+      <div class="entry-row-1">
+        <div>
+          <label>วันที่ปฏิบัติงาน <span style="color:var(--danger);">*</span></label>
+          <div style="position: relative; width: 100%;">
+            <input type="text" id="inDateDisplay" placeholder="วว/ดด/ปปปป" readonly style="width: 100%; cursor: pointer; padding-right: 32px; background: #fff;">
+            <svg style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; width: 15px; height: 15px; fill: var(--ink-soft);" viewBox="0 0 448 512"><path d="M152 24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H64C28.7 64 0 92.7 0 128v320c0 35.3 28.7 64 64 64H384c35.3 64 64-28.7 64-64V128c0-35.3-28.7-64-64-64H344V24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H152V24zM48 192h352v256c0 8.8-7.2 16-16 16H64c-8.8 0-16-7.2-16-16V192z"/></svg>
+            <input type="date" id="inDate" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;">
+          </div>
+        </div>
+        <div><label>เวลาเริ่ม <span style="color:var(--danger);">*</span></label><select id="inStart"></select></div>
+        <div><label>เวลาเลิก <span style="color:var(--danger);">*</span></label><select id="inEnd"></select></div>
+        <div><label>รวม ชม.</label><input type="text" id="inHoursPreview" disabled class="mono" value="—"></div>
+      </div>
+      
+      <div class="entry-row-2">
+        <div>
+          <label>รายละเอียดงานที่ปฏิบัติ <span style="color:var(--danger);">*</span> <span id="charCounter" style="font-weight:normal; color:var(--bronze); float:right;">(0/80)</span></label>
+          <input type="text" id="inTask" maxlength="80" placeholder="เช่น บันทึกขอเบิกเงินงบประมาณในระบบ New GFMIS, เคลียร์ลูกหนี้เงินยืมทดรองจ่าย, จัดทำทะเบียนเงินฝากคลังเงินนอกงบประมาณ">
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button class="btn btn-primary" onclick="addEntry()">+ เพิ่มรายการ</button>
+          <button class="btn" onclick="resetForm()" style="color: #b23b3b; border-color: #e5e7eb;">เริ่มใหม่</button>
+        </div>      
+      </div>
+      
+      <div class="hint">💡 คำแนะนำ: เลือกเวลาจาก Dropdown ระบบจะคำนวณชั่วโมงให้โดยอัตโนมัติ <span id="weekendNotice" style="color:var(--danger); font-weight:bold; display:none; margin-left:10px;">⚠️ หมายเหตุ: วันหยุดราชการเบิกจ่ายได้สูงสุด 7 ชม. (420 บาท) เท่านั้น</span></div>
+
+      <table class="log" id="entryTable">
+        <thead><tr><th>วัน</th><th>วันที่</th><th>เริ่ม</th><th>เลิก</th><th>รวม ชม.</th><th>งานที่ปฏิบัติ</th><th></th></tr></thead>
+        <tbody id="entryBody"></tbody>
+      </table>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="clearAll()">🗑 ล้างตารางเวลา</button> 
+        <button class="btn" style="margin-left: auto;" onclick="switchPage('view-page1')">ไปหน้า 1 (พิมพ์รายงาน) →</button> 
+        <button class="btn btn-primary" onclick="switchPage('view-page2')">ไปหน้า 2 (พิมพ์หลักฐานฯ) →</button> 
+      </div>
+    </div>
+  </div>
+  <footer>ระบบจัดการค่าล่วงเวลา — Interactive Prototype V.1.1.7</footer>
+</div>
+
+<div id="view-page1" class="page-view">
+  <div class="topbar">
+    <div style="display: flex; gap: 8px;">
+      <button class="btn btn-back" onclick="switchPage('view-main')">🏠 หน้าหลัก</button>
+      <button class="btn btn-back" onclick="switchPage('view-page2')">หน้าถัดไป ⮞</button>
+    </div>
+    <span style="font-weight: 600;">รายงานการปฏิบัติงาน (หน้า 1)</span>
+    <button class="btn btn-print" onclick="printDoc('portrait')">🖨️ พิมพ์เอกสาร</button>
+  </div>
+  <div class="report-container">
+    <div class="doc" id="sheet1Doc"></div>
+  </div>
+</div>
+
+<div id="view-page2" class="page-view">
+  <div class="topbar">
+    <div style="display: flex; gap: 8px;">
+      <button class="btn btn-back" onclick="switchPage('view-main')">🏠 หน้าหลัก</button>
+      <button class="btn btn-back" onclick="switchPage('view-page1')">⮜ หน้าก่อนหน้า</button>
+    </div>
+    <span style="font-weight: 600;">หลักฐานการเบิกจ่ายเงิน (หน้า 2)</span>
+    <button class="btn btn-print" onclick="printDoc('landscape')">🖨️ พิมพ์เอกสาร</button>
+  </div>
+  <div class="report-container wide">
+    <div class="totals-strip" id="totalsStrip"></div>
+    <div class="doc" id="sheet2Doc"></div>
+  </div>
+</div>
+
+<script>
+const TIME_OPTIONS_WEEKDAY = ['15:30','16:30','17:30','18:30','19:30','20:30'];
+const TIME_OPTIONS_WEEKEND = ['08:30','09:30','10:30','11:30','12:30','13:30','14:30','15:30','16:30'];
+const DAY_NAMES = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const RATE_WEEKDAY = 50; 
+const RATE_WEEKEND = 60;
+
+// 1. เพิ่มรายการวันหยุดราชการที่ตรงกับวันธรรมดา (รูปแบบ YYYY-MM-DD)
+const PUBLIC_HOLIDAYS = [
+'2026-01-01', // วันขึ้นปีใหม่
+  '2026-01-02', // วันหยุดพิเศษ
+  '2026-03-03', // วันมาฆบูชา
+  '2026-04-06', // วันจักรี
+  '2026-04-13', // วันสงกรานต์
+  '2026-04-14', // วันสงกรานต์
+  '2026-04-15', // วันสงกรานต์
+  '2026-05-01', // วันแรงงานแห่งชาติ
+  '2026-05-04', // วันฉัตรมงคล
+  '2026-05-31', // วันวิสาขบูชา (ตรงกับวันอาทิตย์)
+  '2026-06-03', // วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าสุทิดาฯ
+  '2026-07-28', // วันเฉลิมพระชนมพรรษา พระบาทสมเด็จพระเจ้าอยู่หัว
+  '2026-07-29', // วันอาสาฬหบูชา
+  '2026-07-30', // วันเข้าพรรษา
+  '2026-08-12', // วันแม่แห่งชาติ
+  '2026-09-28', // วันหยุดราชการพิเศษ
+  '2026-09-29', // วันหยุดราชการพิเศษ
+  '2026-10-13', // วันคล้ายวันสวรรคต ร.9
+  '2026-10-16', // วันหยุดราชการพิเศษ
+  '2026-10-23', // วันปิยมหาราช
+  '2026-12-05', // วันพ่อแห่งชาติ (ตรงกับวันเสาร์)
+  '2026-12-07', // วันหยุดชดเชยวันพ่อแห่งชาติ
+  '2026-12-10', // วันรัฐธรรมนูญ
+  '2026-12-31'  // วันสิ้นปี
+     // พิมพ์เพิ่มวันหยุดอื่นๆ ของปีลงในนี้ได้เรื่อยๆ
+];
+
+let state = { entries: [] };
+
+function switchPage(pageId) {
+  const empName = document.getElementById('empName').value.trim();
+  const certName = document.getElementById('certName').value.trim();
+  if (pageId !== 'view-main' && (!empName || !certName)) {
+    alert('กรุณากรอก ชื่อผู้ปฏิบัติงาน และ ชื่อผู้รับรอง ก่อนเข้าดูรายงานครับ');
+    return;
+  }
+
+  document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  if (pageId === 'view-page1') renderSheet1Doc();
+  if (pageId === 'view-page2') renderSheet2Doc();
+}
+
+function saveToLocalStorage() {
+  const dataToSave = {
+    empName: document.getElementById('empName').value,
+    empPos: document.getElementById('empPos').value,
+    certName: document.getElementById('certName').value,
+    certPos: document.getElementById('certPos').value,
+    claimMonth: document.getElementById('claimMonth').value,
+    entries: state.entries
+  };
+  localStorage.setItem('ot_goverment_system_data', JSON.stringify(dataToSave));
+}
+
+function loadFromLocalStorage() {
+  const savedData = localStorage.getItem('ot_goverment_system_data');
+  if (savedData) {
+    try {
+      const parsedData = JSON.parse(savedData);
+      if (parsedData.empName !== undefined) document.getElementById('empName').value = parsedData.empName;
+      if (parsedData.empPos !== undefined) document.getElementById('empPos').value = parsedData.empPos;
+      if (parsedData.certName !== undefined) document.getElementById('certName').value = parsedData.certName;
+      if (parsedData.certPos !== undefined) document.getElementById('certPos').value = parsedData.certPos;
+      if (parsedData.claimMonth !== undefined) document.getElementById('claimMonth').value = parsedData.claimMonth;
+      if (parsedData.entries !== undefined) state.entries = parsedData.entries;
+    } catch (e) {}
+  }
+  document.getElementById('inDate').value = new Date().toISOString().slice(0,10);
+  updateClaimMonthFromDate();
+  fillTimeSelects(); 
+  renderEntryTable();
+}
+
+function updateDateDisplays() {
+  const val = document.getElementById('inDate').value;
+  if (val) {
+    const [y, m, d] = val.split('-');
+    const yearBE = parseInt(y) + 543;
+    document.getElementById('inDateDisplay').value = `${d}/${m}/${yearBE}`;
+    document.getElementById('claimMonthDisplay').value = `${THAI_MONTHS[parseInt(m)-1]} ${yearBE}`;
+  } else {
+    document.getElementById('inDateDisplay').value = '';
+    document.getElementById('claimMonthDisplay').value = '';
+  }
+}
+
+function fillTimeSelects(){
+  const dateVal = document.getElementById('inDate').value;
+  const isWknd = dateVal ? isWeekend(dateVal) : false;
+  const options = isWknd ? TIME_OPTIONS_WEEKEND : TIME_OPTIONS_WEEKDAY;
+  
+  ['inStart','inEnd'].forEach(id=>{
+    const sel = document.getElementById(id);
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">— เลือกเวลา —</option>' + options.map(t=>`<option value="${t}">${t} น.</option>`).join('');
+    if (currentVal && options.includes(currentVal)) { sel.value = currentVal; }
+  });
+  
+  const noticeEl = document.getElementById('weekendNotice');
+  if (noticeEl) noticeEl.style.display = isWknd ? 'inline-block' : 'none';
+}
+
+function updateClaimMonthFromDate() {
+  const dateVal = document.getElementById('inDate').value;
+  if (dateVal) {
+    document.getElementById('claimMonth').value = dateVal.slice(0, 7);
+    updateDateDisplays();
+  }
+}
+
+document.getElementById('inDate').addEventListener('change', function() {
+  updateClaimMonthFromDate(); fillTimeSelects(); previewHours(); saveToLocalStorage();
+});
+
+document.getElementById('inTask').addEventListener('input', function() {
+  document.getElementById('charCounter').textContent = `(${this.value.length}/80)`;
+});
+
+function isWeekend(dateStr) { 
+  const d = new Date(dateStr + 'T00:00:00').getDay(); 
+  const isSatSun = (d === 0 || d === 6);
+  const isSpecialHoliday = PUBLIC_HOLIDAYS.includes(dateStr);
+  return isSatSun || isSpecialHoliday; 
+}
+function toMinutes(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
+function computeHours(start,end){
+  if(!start || !end) return null;
+  const diff = (toMinutes(end)-toMinutes(start))/60;
+  return diff > 0 ? diff : null;
+}
+
+function previewHours(){
+  const d = document.getElementById('inDate').value;
+  const s = document.getElementById('inStart').value;
+  const e = document.getElementById('inEnd').value;
+  let h = computeHours(s,e);
+  if (h !== null && d && isWeekend(d)) h = Math.min(h, 7);
+  document.getElementById('inHoursPreview').value = h!==null ? h.toFixed(2).replace(/\.00$/, '') : '—';
+}
+document.getElementById('inStart').addEventListener('change', previewHours);
+document.getElementById('inEnd').addEventListener('change', previewHours);
+
+function addEntry(){
+  const date = document.getElementById('inDate').value;
+  const start = document.getElementById('inStart').value;
+  const end = document.getElementById('inEnd').value;
+  const task = document.getElementById('inTask').value.trim();
+  
+  if(!date || !start || !end || !task){ alert('กรุณากรอกรายละเอียดงานและเวลาให้ครบถ้วน'); return; }
+  let hours = computeHours(start,end);
+  if(hours===null){ alert('กรุณาเลือกเวลาเริ่ม-เลิกให้ถูกต้อง'); return; }
+  if (isWeekend(date)) hours = Math.min(hours, 7);
+  
+  state.entries = state.entries.filter(e=>e.date!==date);
+  state.entries.push({date, start, end, hours, task});
+  state.entries.sort((a,b)=>a.date.localeCompare(b.date));
+  
+  document.getElementById('inTask').value='';
+  document.getElementById('charCounter').textContent = '(0/80)';
+  document.getElementById('inStart').value='';
+  document.getElementById('inEnd').value='';
+  previewHours(); renderEntryTable(); saveToLocalStorage();
+}
+
+function editEntry(date) {
+  const entry = state.entries.find(e => e.date === date);
+  if (!entry) return;
+
+  document.getElementById('inDate').value = entry.date;
+  updateDateDisplays();
+  fillTimeSelects();
+
+  document.getElementById('inStart').value = entry.start;
+  document.getElementById('inEnd').value = entry.end;
+  document.getElementById('inTask').value = entry.task;
+  document.getElementById('charCounter').textContent = `(${entry.task.length}/50)`;
+
+  previewHours();
+
+  document.getElementById('inDateDisplay').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function deleteEntry(date){
+  state.entries = state.entries.filter(e=>e.date!==date);
+  renderEntryTable(); saveToLocalStorage();
+}
+
+function resetForm() {
+  document.getElementById('inTask').value = '';
+  document.getElementById('charCounter').textContent = '(0/80)';
+  document.getElementById('inStart').value = '';
+  document.getElementById('inEnd').value = '';
+  
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  document.getElementById('inDate').value = `${yyyy}-${mm}-${dd}`;
+  
+  updateDateDisplays();
+  fillTimeSelects();
+  previewHours();
+}
+
+function clearAll(){
+  if(state.entries.length && !confirm('ล้างข้อมูลเฉพาะรายการในตารางเวลา?')) return;
+  state.entries = [];
+  document.getElementById('inTask').value='';
+  document.getElementById('charCounter').textContent = '(0/80)';
+  renderEntryTable(); saveToLocalStorage();
+}
+
+const formatH = (h) => (h > 0 ? h.toFixed(2).replace(/\.00$/, '') : '0');
+function dayName(dateStr){ return DAY_NAMES[new Date(dateStr+'T00:00:00').getDay()]; }
+
+function renderEntryTable(){
+  const body = document.getElementById('entryBody');
+  if(state.entries.length===0){
+    body.innerHTML = '<tr class="empty-row"><td colspan="7">ยังไม่มีรายการ — เพิ่มรายการปฏิบัติงานด้านบน</td></tr>'; return;
+  }
+  
+  body.innerHTML = state.entries.map(e => {
+    const [y, m, d] = e.date.split('-');
+    const formattedDate = `${d}/${m}/${parseInt(y) + 543}`;
+    
+    return `
+    <tr${isWeekend(e.date)?' style="background:#f1e7fa;"':''}>
+      <td>${dayName(e.date)}${isWeekend(e.date)?' 🟣':''}</td>
+      <td>${formattedDate}</td>
+      <td>${e.start}</td>
+      <td>${e.end}</td>
+      <td>${formatH(e.hours)}</td>
+      <td>${e.task || '—'}</td>
+      <td>
+         <button class="edit-x" onclick="editEntry('${e.date}')">แก้ไข</button>
+         <button class="del-x" onclick="deleteEntry('${e.date}')">ลบ</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+['empName','empPos','certName','certPos'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', saveToLocalStorage);
+});
+
+function daysInMonth(y,m){ return new Date(y, m, 0).getDate(); }
+
+function renderSheet1Doc(){
+  const name = document.getElementById('empName').value;
+  const certName = document.getElementById('certName').value;
+  const certPos = document.getElementById('certPos').value;
+  const [y,m] = (document.getElementById('claimMonth').value||'').split('-');
+  const year = Number(y), month = Number(m);
+  const dim = (y&&m) ? daysInMonth(year,month) : 31;
+  const monthLabel = m ? `ประจำเดือน ${THAI_MONTHS[month-1]} พ.ศ. ${year+543}` : '';
+
+  let rows = '';
+  for(let d=1; d<=dim; d++){
+    const dateStr = `${y}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const e = state.entries.find(x=>x.date===dateStr);
+    const weekend = isWeekend(dateStr);
+    
+    // เอา font-weight: bold !important ออก เพื่อไม่ให้หนาเกินไป
+    rows += `<tr${weekend?' class="weekend-row"':''}>
+      <td class="dayname" style="width:45px;">${dayName(dateStr)}</td>
+      <td style="width:45px;">${d}</td>
+      <td></td>
+      <td class="mono">${e?e.start:''}</td>
+      <td class="mono">${e?e.end:''}</td>
+      <td>${e?Math.round(e.hours):''}</td>
+      <td class="task">${e?e.task||'':''}</td>
+    </tr>`;
+  }
+
+  document.getElementById('sheet1Doc').innerHTML = `
+    <div class="doc-title">รายงานการปฏิบัติงานนอกเวลาราชการ</div>
+    <div class="doc-sub">${monthLabel}</div>
+    <div class="doc-meta">ชื่อ-นามสกุล ${name || '—'}</div>
+    <table>
+      <colgroup><col style="width: 45px;"><col style="width: 45px;"><col style="width: 120px;"><col style="width: 50px;"><col style="width: 50px;"><col style="width: 35px;"><col style="width: auto;"></colgroup>
+      <thead><tr><th>วัน</th><th>วันที่</th><th>ลายเซ็น</th><th>เริ่มเวลา</th><th>เลิกเวลา</th><th>รวม<br> ชม.</th><th>งานที่ได้ปฏิบัติ</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="doc-certify">
+      <div style="margin-top: 20px !important;">ข้าพเจ้าขอรับรองว่าผู้มีรายนามข้างต้นนี้ได้อยู่ปฏิบัติงานนอกเวลาราชการตามวันและเวลาดังกล่าวจริง</div>
+      <div style="margin-top: 50px !important;"><span style="margin-left: 80px;"></span>ลงชื่อ .................................................................... ผู้รับรองการปฏิบัติงาน</div>
+      <div style="margin-top: 5px !important;">( ${certName || '...........................................'} )</div>
+      <div style="margin-top: 5px !important;">${certPos || 'ตำแหน่ง ...........................................'}</div>
+    </div>
+    <div style="margin-top: 20px !important;"><div class="doc-note">
+      <div class="note-title">หมายเหตุ</div>
+      1. ผู้อยู่ปฏิบัติงานนอกเวลาต้องเซ็นชื่อ ลงเวลาเริ่มปฏิบัติและเวลากลับ รวมชั่วโมงพร้อมทั้งงานที่ปฏิบัติในแต่ละวัน<br>
+<span style="margin-left: 12px;">พร้อมทั้งงานที่ปฏิบัติในแต่ละวันตามความเป็นจริง<br>
+      2. ผู้ควบคุมต้องลงลายเซ็นรับรองแต่ละวัน
+    </div>`;
+}
+
+function thaiBahtText(amount) {
+  if (!amount || amount === 0) return 'ศูนย์บาทถ้วน';
+  const numberArray = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า'];
+  const digitArray = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน', 'ล้าน'];
+  let bahtText = '';
+  let amountStr = parseFloat(amount).toFixed(2);
+  let [baht, satang] = amountStr.split('.');
+
+  function convert(numString) {
+    let text = ''; let len = numString.length;
+    for (let i = 0; i < len; i++) {
+      let num = parseInt(numString[i]);
+      if (num !== 0) {
+        if (i === len - 1 && num === 1 && len > 1 && numString[len-2] !== '0') text += 'เอ็ด';
+        else if (i === len - 2 && num === 2) text += 'ยี่';
+        else if (i === len - 2 && num === 1) text += ''; 
+        else text += numberArray[num];
+        text += digitArray[len - i - 1];
+      }
+    }
+    return text;
+  }
+  let bahtPart = convert(baht), satangPart = convert(satang);
+  if (bahtPart !== '') bahtText += bahtPart + 'บาท';
+  if (satangPart === '' || satangPart === '00') bahtText += 'ถ้วน'; else bahtText += satangPart + 'สตางค์';
+  return bahtText;
+}
+
+function renderSheet2Doc(){
+  const [y,m] = (document.getElementById('claimMonth').value||'').split('-');
+  const year = Number(y), month = Number(m);
+  const dim = (y&&m) ? daysInMonth(year,month) : 31;
+  const monthLabel = m ? `เดือน ${THAI_MONTHS[month-1]} พ.ศ. ${year+543}` : '';
+  const name = document.getElementById('empName').value;
+  const certName = document.getElementById('certName').value;
+  const certPos = document.getElementById('certPos').value;
+    const empDept = document.getElementById('empPos').value;
+  
+  let formattedName = name ? name.trim().replace(/\s+/, '<br>') : '—';
+  let grandWeekdayHours = 0, grandWeekendHours = 0, grandPay = 0;
+
+function getBlockData(startDay, endDay) {
+    let dayHeaders = '', dayCells = '', blockWeekdayHours = 0, blockWeekendHours = 0, blockPay = 0;
+    for (let i = 0; i < 11; i++) {
+      let currentDay = startDay + i;
+      if (currentDay <= endDay && currentDay <= dim) {
+        const dateStr = `${y}-${String(month).padStart(2,'0')}-${String(currentDay).padStart(2,'0')}`;
+        const e = state.entries.find(x=>x.date===dateStr);
+        const weekend = isWeekend(dateStr);
+        
+        // บีบความกว้างเหลือ 35px เพื่อให้ช่องผอมสูงเป็นสี่เหลี่ยมผืนผ้าแนวตั้ง
+        dayHeaders += `<td style="width: 35px !important; min-width: 35px !important; max-width: 35px !important; font-weight: 300; background: ${weekend?'#e4cdf3':'#f5f5f5'}; text-align:center; padding: 4px 1px !important;">${currentDay}</td>`;
+        if(e) {
+          dayCells += `<td class="mono time-cell" style="width: 35px !important; min-width: 35px !important; max-width: 35px !important; text-align:center; font-weight: normal; line-height: 1; ${weekend?'background:#f1e7fa;':''}">${e.start}<br>${e.end}</td>`;
+          if(weekend) { blockWeekendHours += e.hours; blockPay += e.hours * RATE_WEEKEND; }
+          else { blockWeekdayHours += e.hours; blockPay += e.hours * RATE_WEEKDAY; }
+        } else {
+          dayCells += `<td style="width: 35px !important; min-width: 35px !important; max-width: 35px !important; ${weekend?'background:#f1e7fa;':''}"><br>&nbsp;</td>`;
+        }
+      } else {
+        dayHeaders += `<td style="background: #fafafa; width: 35px !important; min-width: 35px !important; max-width: 35px !important;"></td>`;
+        dayCells += `<td style="width: 35px !important; min-width: 35px !important; max-width: 35px !important;"><br>&nbsp;</td>`;
+      }
+    }
+    grandWeekdayHours += blockWeekdayHours; grandWeekendHours += blockWeekendHours; grandPay += blockPay;
+    return { dayHeaders, dayCells, blockWeekdayHours, blockWeekendHours, blockPay };
+  }
+
+  const b1 = getBlockData(1, 10), b2 = getBlockData(11, 20), b3 = getBlockData(21, 31);
+
+  document.getElementById('sheet2Doc').innerHTML = `
+<div class="doc-title" style="margin-top: 20px !important;">หลักฐานการเบิกจ่ายเงินตอบแทนการปฏิบัติงานนอกเวลาราชการ</div>
+    <div class="doc-sub">ส่วนราชการ ${empDept || '.......................................................'} ประจำ${monthLabel}</div>
+    <div class="doc-sub">เบิกตามฎีกาที่..........................................ลงวันที่.................เดือน............................พ.ศ...............</div>
+<table style="margin-top: 25px !important;">
+      <thead>
+        <tr>
+          <th rowspan="2" style="width: 40px;">ลำดับที่</th>
+          <th rowspan="2" style="width: 150px;">ชื่อ</th> 
+          <th colspan="11" rowspan="2">วันที่ปฏิบัติงานนอกเวลาราชการ</th>
+          <th colspan="2">รวมเวลาปฏิบัติงาน</th>
+          <th rowspan="2" style="width: 75px;">จำนวนเงิน</th> 
+          <th rowspan="2" style="width: 65px;">ว/ด/ป<br>ที่รับเงิน</th> 
+          <th rowspan="2" style="width: 80px;">ลายมือชื่อ<br>ผู้รับเงิน</th> 
+          <th rowspan="2" style="width: 60px;">หมายเหตุ</th> 
+        </tr>
+        <tr>
+                    <th style="width: 60px; min-width: 60px;">วันปกติ<br>(ชั่วโมง)</th>
+          <th style="width: 60px; min-width: 60px;">วันหยุด<br>(ชั่วโมง)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td rowspan="6"></td>
+          <td rowspan="6" style="text-align: left !important; padding-left: 6px !important; font-weight: 200; font-size: 12px !important; vertical-align: top !important; line-height: 1.7;">${formattedName}</td>
+          ${b1.dayHeaders}
+          <td rowspan="2" class="mono" style="text-align:center;">${formatH(b1.blockWeekdayHours) !== '0' ? formatH(b1.blockWeekdayHours) : ''}</td>
+          <td rowspan="2" class="mono" style="text-align:center;">${formatH(b1.blockWeekendHours) !== '0' ? formatH(b1.blockWeekendHours) : ''}</td>
+          <td rowspan="2" class="mono" style="text-align: right; padding-right: 4px !important;">${b1.blockPay > 0 ? b1.blockPay.toLocaleString('th-TH',{minimumFractionDigits:2}) : ''}</td>
+          <td rowspan="6"></td><td rowspan="6"></td><td rowspan="6"></td>
+        </tr><tr>${b1.dayCells}</tr>
+        <tr>
+          ${b2.dayHeaders}
+          <td rowspan="2" class="mono" style="text-align:center;">${formatH(b2.blockWeekdayHours) !== '0' ? formatH(b2.blockWeekdayHours) : ''}</td>
+          <td rowspan="2" class="mono" style="text-align:center;">${formatH(b2.blockWeekendHours) !== '0' ? formatH(b2.blockWeekendHours) : ''}</td>
+          <td rowspan="2" class="mono" style="text-align: right; padding-right: 4px !important;">${b2.blockPay > 0 ? b2.blockPay.toLocaleString('th-TH',{minimumFractionDigits:2}) : ''}</td>
+        </tr><tr>${b2.dayCells}</tr>
+        <tr>
+          ${b3.dayHeaders}
+          <td rowspan="2" class="mono" style="text-align:center;">${formatH(b3.blockWeekdayHours) !== '0' ? formatH(b3.blockWeekdayHours) : ''}</td>
+          <td rowspan="2" class="mono" style="text-align:center;">${formatH(b3.blockWeekendHours) !== '0' ? formatH(b3.blockWeekendHours) : ''}</td>
+          <td rowspan="2" class="mono" style="text-align: right; padding-right: 4px !important;">${b3.blockPay > 0 ? b3.blockPay.toLocaleString('th-TH',{minimumFractionDigits:2}) : ''}</td>
+        </tr><tr>${b3.dayCells}</tr>
+        
+        <!-- รวมคอลัมน์ (colspan="13") เพื่อดันคำว่ารวมไปชิดช่องเวลาปกติ -->
+        <tr style="font-weight: 200; background: #fafafa;">
+          <td colspan="13" style="text-align: right !important; padding-right: 15px !important;">รวม</td>
+          <td class="mono" style="text-align:center;">${formatH(grandWeekdayHours)}</td>
+          <td class="mono" style="text-align:center;">${formatH(grandWeekendHours)}</td>
+          <td class="mono" style="text-align: right; padding-right: 4px !important;">${grandPay > 0 ? grandPay.toLocaleString('th-TH',{minimumFractionDigits:2}) : '0.00'}</td>
+          <td></td><td></td><td></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="font-family:'Sarabun', sans-serif; font-size: 12px !important; color: #000000; margin-top: 40px;">
+      <div><span style="margin-left: 90px;">รวมเงินจ่ายทั้งสิ้น (ตัวอักษร) <span style="border-bottom: 1px dotted #000; padding: 0 15px; font-weight: 300;">${grandPay > 0 ? thaiBahtText(grandPay) : 'ศูนย์บาทถ้วน'}</span></div>
+      <div style="margin-top: 10px; font-weight: 300;"><span style="margin-left: 90px;">ขอรับรองว่า ผู้มีรายชื่อข้างต้นปฏิบัติงานนอกเวลาจริง</div>
+    </div>
+
+    <div style="margin-top: 90px; font-family:'Sarabun', sans-serif; font-size: 12px; display: flex; justify-content: space-between;">
+      <div style="text-align: center; width: 45%;">
+        <div><span style="margin-left: 80px;"></span>ลงชื่อ ............................................................ ผู้รับรองการปฏิบัติงาน</div>
+        <div style="margin-top: 6px;">( ${certName || '............................................................'} )</div>
+        <div style="margin-top: 6px;">${certPos || 'ตำแหน่ง ............................................................'}</div>
+      </div>
+      <div style="text-align: center; width: 45%;">
+        <div style="margin-bottom: 4px;">ลายมือชื่อ ............................................................ ผู้จ่ายเงิน</div>
+        <div style="margin-bottom: 4px;"><span style="margin-left: 10px;"></span>(..............................................................)</div>
+        <div style="margin-bottom: 4px;">ตำแหน่ง ............................................................</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('totalsStrip').innerHTML = `
+    <div class="box"><div class="num mono">${state.entries.length}</div><div class="lbl">วันที่ทำโอทีรวม (วัน)</div></div>
+    <div class="box"><div class="num mono">${formatH(grandWeekdayHours)} / ${formatH(grandWeekendHours)}</div><div class="lbl">ชั่วโมงวันปกติ / วันหยุด</div></div>
+    <div class="box"><div class="num mono">${grandPay.toLocaleString('th-TH',{minimumFractionDigits:2})}</div><div class="lbl">ยอดเงินเบิกจ่ายทั้งสิ้น (บาท)</div></div>
+    <div class="box"><div class="num mono">${RATE_WEEKDAY}/${RATE_WEEKEND}</div><div class="lbl">อัตรา ปกติ/หยุด (บาท/ชม.)</div></div>`;
+}
+
+function printDoc(type) {
+  let styleEl = document.getElementById('dynamic-print-style');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'dynamic-print-style';
+    document.head.appendChild(styleEl);
+  }
+  
+  if (type === 'landscape') {
+    styleEl.innerHTML = '@page { size: A4 landscape; margin: 5mm 6mm; }';
+  } else {
+    styleEl.innerHTML = '@page { size: A4 portrait; margin: 8mm; }';
+  }
+  window.print();
+}
+
+window.onload = loadFromLocalStorage;
+</script>
+</body>
+</html>
